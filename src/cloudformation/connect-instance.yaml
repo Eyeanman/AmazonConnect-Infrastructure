@@ -1,0 +1,475 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: Amazon Connect Instance Infrastructure
+
+Parameters:
+  pEnvironment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - sit
+      - preprod
+      - prod
+  pInstanceName:
+    Type: String
+    Description: Exclude Region/Environment, Max length of 10
+    MinLength: 3
+    MaxLength: 10
+    AllowedPattern: (?=^.{3,63}$)(?!^(\d+\.)+\d+$)(^(([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])\.)*([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])$)
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+    - Label:
+        default: Environment
+      Parameters:
+      - pEnvironment
+    - Label:
+        default: Amazon Connect
+      Parameters:
+      - pInstanceName
+    ParameterLabels:
+      pEnvironment:
+        default: Environment
+      pInstanceName:
+        default: Connect Instance Name
+
+Resources:
+
+## KMS Keys for Amazon Connect to use when storing objects in S3 ##
+  rKMSKeyAmazonConnectCallRecordings:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: "S3 Bucket KMS Key for Call Recordings"
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: Allow administration of the key
+          Effect: Allow
+          Principal:
+            AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+          Action: kms:*
+          Resource: "*"
+        - Sid: Allow access through Connect for all principals in the account that are authorized
+            to use Connect
+          Effect: Allow
+          Principal:
+            AWS: "*"
+          Action:
+          - kms:CreateGrant
+          - kms:Describe*
+          - kms:Get*
+          - kms:List*
+          Resource: "*"
+          Condition:
+            StringEquals:
+              kms:CallerAccount: !Ref "AWS::AccountId"
+              kms:ViaService: !Sub connect.${AWS::Region}.amazonaws.com
+        - Sid: Allow Connect to directly describe the key
+          Effect: Allow
+          Principal:
+            Service: connect.amazonaws.com
+          Action:
+          - kms:Describe*
+          - kms:Get*
+          - kms:List*
+          Resource: "*"
+        - Sid: Allow direct access to key metadata to the account
+          Effect: Allow
+          Principal:
+            AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+          Action:
+          - kms:Describe*
+          - kms:Get*
+          - kms:List*
+          - kms:RevokeGrant
+          Resource: "*"
+        - Sid: Allow access through S3 for all principals in the account that are authorized
+            to use S3
+          Effect: Allow
+          Principal:
+            AWS: "*"
+          Action: kms:Decrypt
+          Resource: "*"
+          Condition:
+            StringEquals:
+              kms:CallerAccount: !Ref "AWS::AccountId"
+              kms:ViaService: !Sub s3.${AWS::Region}.amazonaws.com
+        - Sid: Restrict direct usage
+          Effect: Deny
+          Principal:
+            AWS: "*"
+          Action:
+          - kms:Encrypt
+          - kms:GenerateDataKey*
+          - kms:ReEncrypt*
+          Resource: "*"
+          Condition:
+            'Null':
+              kms:ViaService: 'true'
+        - Sid: Restrict usage to Connect data
+          Effect: Deny
+          Principal:
+            AWS: "*"
+          Action:
+          - kms:Encrypt
+          - kms:GenerateDataKey*
+          - kms:ReEncrypt*
+          Resource: "*"
+          Condition:
+            'Null':
+              kms:EncryptionContext:aws:connect:OrganizationId: 'true'
+
+  rKMSKeyAmazonConnectChatTranscripts:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: "S3 Bucket KMS Key for Chat Transcripts"
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: Allow administration of the key
+          Effect: Allow
+          Principal:
+            AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+          Action: kms:*
+          Resource: "*"
+        - Sid: Allow access through Connect for all principals in the account that are authorized
+            to use Connect
+          Effect: Allow
+          Principal:
+            AWS: "*"
+          Action:
+          - kms:CreateGrant
+          - kms:Describe*
+          - kms:Get*
+          - kms:List*
+          Resource: "*"
+          Condition:
+            StringEquals:
+              kms:CallerAccount: !Ref "AWS::AccountId"
+              kms:ViaService: !Sub connect.${AWS::Region}.amazonaws.com
+        - Sid: Allow Connect to directly describe the key
+          Effect: Allow
+          Principal:
+            Service: connect.amazonaws.com
+          Action:
+          - kms:Describe*
+          - kms:Get*
+          - kms:List*
+          Resource: "*"
+        - Sid: Allow direct access to key metadata to the account
+          Effect: Allow
+          Principal:
+            AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+          Action:
+          - kms:Describe*
+          - kms:Get*
+          - kms:List*
+          - kms:RevokeGrant
+          Resource: "*"
+        - Sid: Allow access through S3 for all principals in the account that are authorized
+            to use S3
+          Effect: Allow
+          Principal:
+            AWS: "*"
+          Action: kms:Decrypt
+          Resource: "*"
+          Condition:
+            StringEquals:
+              kms:CallerAccount: !Ref "AWS::AccountId"
+              kms:ViaService: !Sub s3.${AWS::Region}.amazonaws.com
+        - Sid: Restrict direct usage
+          Effect: Deny
+          Principal:
+            AWS: "*"
+          Action:
+          - kms:Encrypt
+          - kms:GenerateDataKey*
+          - kms:ReEncrypt*
+          Resource: "*"
+          Condition:
+            'Null':
+              kms:ViaService: 'true'
+        - Sid: Restrict usage to Connect data
+          Effect: Deny
+          Principal:
+            AWS: "*"
+          Action:
+          - kms:Encrypt
+          - kms:GenerateDataKey*
+          - kms:ReEncrypt*
+          Resource: "*"
+          Condition:
+            'Null':
+              kms:EncryptionContext:aws:connect:OrganizationId: 'true'
+
+  rKMSKeyAmazonConnectScheduledReports:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: "S3 Bucket KMS Key for Scheduled Reports"
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: Allow administration of the key
+          Effect: Allow
+          Principal:
+            AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+          Action: kms:*
+          Resource: "*"
+        - Sid: Allow access through Connect for all principals in the account that are authorized
+            to use Connect
+          Effect: Allow
+          Principal:
+            AWS: "*"
+          Action:
+          - kms:CreateGrant
+          - kms:Describe*
+          - kms:Get*
+          - kms:List*
+          Resource: "*"
+          Condition:
+            StringEquals:
+              kms:CallerAccount: !Ref "AWS::AccountId"
+              kms:ViaService: !Sub connect.${AWS::Region}.amazonaws.com
+        - Sid: Allow Connect to directly describe the key
+          Effect: Allow
+          Principal:
+            Service: connect.amazonaws.com
+          Action:
+          - kms:Describe*
+          - kms:Get*
+          - kms:List*
+          Resource: "*"
+        - Sid: Allow direct access to key metadata to the account
+          Effect: Allow
+          Principal:
+            AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+          Action:
+          - kms:Describe*
+          - kms:Get*
+          - kms:List*
+          - kms:RevokeGrant
+          Resource: "*"
+        - Sid: Allow access through S3 for all principals in the account that are authorized
+            to use S3
+          Effect: Allow
+          Principal:
+            AWS: "*"
+          Action: kms:Decrypt
+          Resource: "*"
+          Condition:
+            StringEquals:
+              kms:CallerAccount: !Ref "AWS::AccountId"
+              kms:ViaService: !Sub s3.${AWS::Region}.amazonaws.com
+        - Sid: Restrict direct usage
+          Effect: Deny
+          Principal:
+            AWS: "*"
+          Action:
+          - kms:Encrypt
+          - kms:GenerateDataKey*
+          - kms:ReEncrypt*
+          Resource: "*"
+          Condition:
+            'Null':
+              kms:ViaService: 'true'
+        - Sid: Restrict usage to Connect data
+          Effect: Deny
+          Principal:
+            AWS: "*"
+          Action:
+          - kms:Encrypt
+          - kms:GenerateDataKey*
+          - kms:ReEncrypt*
+          Resource: "*"
+          Condition:
+            'Null':
+              kms:EncryptionContext:aws:connect:OrganizationId: 'true'
+
+## KMS Key Aliases ##
+  rKeyAliasAmazonConnectCallRecordings:
+    Type: 'AWS::KMS::Alias'
+    Properties:
+      AliasName: !Sub 'alias/connect-${pEnvironment}-${pInstanceName}-callrecordings'
+      TargetKeyId: !Ref rKMSKeyAmazonConnectCallRecordings
+  rKeyAliasAmazonConnectChatTranscripts:
+    Type: 'AWS::KMS::Alias'
+    Properties:
+      AliasName: !Sub 'alias/connect-${pEnvironment}-${pInstanceName}-chattranscripts'
+      TargetKeyId: !Ref rKMSKeyAmazonConnectChatTranscripts
+  rKeyAliasAmazonConnectScheduledReports:
+    Type: 'AWS::KMS::Alias'
+    Properties:
+      AliasName: !Sub 'alias/connect-${pEnvironment}-${pInstanceName}-scheduledreports'
+      TargetKeyId: !Ref rKMSKeyAmazonConnectScheduledReports
+
+## S3 Buckets for Amazon Connect Objects ##
+  rS3BucketAmazonConnectCallRecordings:
+    Type: AWS::S3::Bucket
+    Properties: 
+      BucketName: !Sub 'connect-${pEnvironment}-${pInstanceName}-callrecordings'
+      AccessControl: Private
+      VersioningConfiguration:
+        Status: Enabled
+  rS3BucketAmazonConnectChatTranscripts:
+    Type: AWS::S3::Bucket
+    Properties: 
+      BucketName: !Sub 'connect-${pEnvironment}-${pInstanceName}-chattranscripts'
+      AccessControl: Private
+      VersioningConfiguration:
+        Status: Enabled
+  rS3BucketAmazonConnectScheduledReports:
+    Type: AWS::S3::Bucket
+    Properties: 
+      BucketName: !Sub 'connect-${pEnvironment}-${pInstanceName}-scheduledreports'
+      AccessControl: Private
+      VersioningConfiguration:
+        Status: Enabled
+
+## S3 Bucket Policies for Amazon Connect Objects ##
+  rS3BucketPolicyAmazonConnectCallRecordings:
+    Type: AWS::S3::BucketPolicy
+    Properties: 
+      Bucket: !Ref rS3BucketAmazonConnectCallRecordings
+      PolicyDocument:
+        Statement:
+        - Sid: AllowAccess
+          Effect: Allow
+          Principal:
+            AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+            Service:
+              - connect.amazonaws.com
+          Action:
+            - s3:Get*
+            - s3:List*
+            - s3:Put*
+          Resource:
+            - !Sub ${rS3BucketAmazonConnectCallRecordings.Arn}/CALL_RECORDINGS/*
+
+  rS3BucketPolicyAmazonConnectChatTranscripts:
+    Type: AWS::S3::BucketPolicy
+    Properties: 
+      Bucket: !Ref rS3BucketAmazonConnectChatTranscripts
+      PolicyDocument:
+        Statement:
+        - Sid: AllowAccess
+          Effect: Allow
+          Principal:
+            AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+            Service:
+              - connect.amazonaws.com
+          Action:
+            - s3:Get*
+            - s3:List*
+            - s3:Put*
+          Resource:
+            - !Sub ${rS3BucketAmazonConnectChatTranscripts.Arn}/CHAT_TRANSCRIPTS/*
+
+  rS3BucketPolicyAmazonConnectScheduledReports:
+    Type: AWS::S3::BucketPolicy
+    Properties: 
+      Bucket: !Ref rS3BucketAmazonConnectScheduledReports
+      PolicyDocument:
+        Statement:
+        - Sid: AllowAccess
+          Effect: Allow
+          Principal:
+            AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+            Service:
+              - connect.amazonaws.com
+          Action:
+            - s3:Get*
+            - s3:List*
+            - s3:Put*
+          Resource:
+            - !Sub ${rS3BucketAmazonConnectScheduledReports.Arn}/SCHEDULED_REPORTS/*
+
+## Amazon Connect Instance ##
+  rConnectInstance:
+    Type: AWS::Connect::Instance
+    Properties: 
+      Attributes: 
+        AutoResolveBestVoices: True
+        ContactflowLogs: True
+        ContactLens: True
+        EarlyMedia: True
+        InboundCalls: True
+        OutboundCalls: True
+      IdentityManagementType: CONNECT_MANAGED
+      InstanceAlias: !Sub '${pEnvironment}-${pInstanceName}-${AWS::Region}'
+    DeletionPolicy: "Retain"
+    UpdateReplacePolicy : "Retain"
+
+## Amazon Connect Instance Configuration ##
+  rConnectInstanceStorageConfigCallRecordings:
+    Type: AWS::Connect::InstanceStorageConfig
+    Properties: 
+      InstanceArn: !Ref rConnectInstance
+      ResourceType: CALL_RECORDINGS
+      S3Config: 
+        BucketName: !Ref rS3BucketAmazonConnectCallRecordings
+        BucketPrefix: CALL_RECORDINGS
+        EncryptionConfig: 
+            EncryptionType: KMS
+            KeyId: !GetAtt 'rKMSKeyAmazonConnectCallRecordings.Arn'
+      StorageType: S3
+
+  rConnectInstanceStorageConfigChatTranscripts:
+    Type: AWS::Connect::InstanceStorageConfig
+    Properties: 
+      InstanceArn: !Ref rConnectInstance
+      ResourceType: CHAT_TRANSCRIPTS
+      S3Config: 
+        BucketName: !Ref rS3BucketAmazonConnectChatTranscripts
+        BucketPrefix: CHAT_TRANSCRIPTS
+        EncryptionConfig: 
+            EncryptionType: KMS
+            KeyId: !GetAtt 'rKMSKeyAmazonConnectChatTranscripts.Arn'
+      StorageType: S3
+
+  rConnectInstanceStorageConfigScheduledReports:
+    Type: AWS::Connect::InstanceStorageConfig
+    Properties: 
+      InstanceArn: !Ref rConnectInstance
+      ResourceType: SCHEDULED_REPORTS
+      S3Config: 
+        BucketName: !Ref rS3BucketAmazonConnectScheduledReports
+        BucketPrefix: SCHEDULED_REPORTS
+        EncryptionConfig: 
+            EncryptionType: KMS
+            KeyId: !GetAtt 'rKMSKeyAmazonConnectScheduledReports.Arn'
+      StorageType: S3
+
+Outputs:
+  oConnectInstance:
+    Description: Amazon Connect Instance ARN
+    Value:
+      Ref: rConnectInstance
+  oS3BucketAmazonConnectCallRecordings:
+    Description: S3 Bucket Name for Amazon Connect Call Recordings
+    Value:
+      Ref: rS3BucketAmazonConnectCallRecordings
+  oKMSKeyAmazonConnectCallRecordings:
+    Description: KMS Key for S3 Bucket containing Amazon Connect Call Recordings
+    Value:
+      Fn::GetAtt: 'rKMSKeyAmazonConnectCallRecordings.Arn'
+  oS3BucketAmazonConnectChatTranscripts:
+    Description: S3 Bucket Name for Amazon Connect Chat Transcripts
+    Value:
+      Ref: rS3BucketAmazonConnectChatTranscripts
+  oKMSKeyAmazonConnectChatTranscripts:
+    Description: KMS Key for S3 Bucket containing Amazon Connect Chat Transcripts
+    Value:
+      Fn::GetAtt: 'rKMSKeyAmazonConnectChatTranscripts.Arn'
+  oS3BucketAmazonConnectScheduledReports:
+    Description: S3 Bucket Name for Amazon Connect Scheduled Reports
+    Value:
+      Ref: rS3BucketAmazonConnectScheduledReports
+  oKMSKeyAmazonConnectScheduledReports:
+    Description: KMS Key for S3 Bucket containing Amazon Connect Scheduled Reports
+    Value:
+      Fn::GetAtt: 'rKMSKeyAmazonConnectScheduledReports.Arn'
