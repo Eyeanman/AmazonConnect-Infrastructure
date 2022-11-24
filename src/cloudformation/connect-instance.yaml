@@ -481,7 +481,8 @@ Resources:
       StreamModeDetails:
         StreamMode: ON_DEMAND
 
-## Amazon Connect Instance ##
+# Amazon Connect Instance #
+## Amazon Connect Instance Creation ##
   rConnectInstance:
     Type: AWS::Connect::Instance
     Properties: 
@@ -541,7 +542,7 @@ Resources:
       ResourceType: CONTACT_TRACE_RECORDS
       StorageType: KINESIS_STREAM
       KinesisStreamConfig:
-        StreamArn: !Ref rKinesisStreamAmazonConnectCallTraceRecords
+        StreamArn: !GetAtt rKinesisStreamAmazonConnectCallTraceRecords.Arn
   rConnectInstanceStorageConfigAgentEvents:
     Type: AWS::Connect::InstanceStorageConfig
     Properties: 
@@ -549,7 +550,7 @@ Resources:
       ResourceType: AGENT_EVENTS
       StorageType: KINESIS_STREAM
       KinesisStreamConfig:
-        StreamArn: !Ref rKinesisStreamAmazonConnectAgentEvents
+        StreamArn: !GetAtt rKinesisStreamAmazonConnectAgentEvents.Arn
 
 Outputs:
   oConnectInstanceArn:
