@@ -445,31 +445,45 @@ Resources:
       StorageType: S3
 
 Outputs:
-  oConnectInstance:
+  oConnectInstanceArn:
     Description: Amazon Connect Instance ARN
     Value:
       Ref: rConnectInstance
-  oS3BucketAmazonConnectCallRecordings:
+    Export:
+      Name: !Sub ${AWS::StackName}-oConnectInstanceArn
+  oS3BucketAmazonConnectCallRecordingsBucketName:
     Description: S3 Bucket Name for Amazon Connect Call Recordings
     Value:
       Ref: rS3BucketAmazonConnectCallRecordings
-  oKMSKeyAmazonConnectCallRecordings:
+    Export:
+      Name: !Sub ${AWS::StackName}-oS3BucketAmazonConnectCallRecordingsBucketName
+  oKMSKeyAmazonConnectCallRecordingsArn:
     Description: KMS Key for S3 Bucket containing Amazon Connect Call Recordings
     Value:
       Fn::GetAtt: 'rKMSKeyAmazonConnectCallRecordings.Arn'
-  oS3BucketAmazonConnectChatTranscripts:
+    Export:
+      Name: !Sub ${AWS::StackName}-oKMSKeyAmazonConnectCallRecordingsArn
+  oS3BucketAmazonConnectChatTranscriptsBucketName:
     Description: S3 Bucket Name for Amazon Connect Chat Transcripts
     Value:
       Ref: rS3BucketAmazonConnectChatTranscripts
-  oKMSKeyAmazonConnectChatTranscripts:
+    Export:
+      Name: !Sub ${AWS::StackName}-oS3BucketAmazonConnectChatTranscriptsBucketName
+  oKMSKeyAmazonConnectChatTranscriptsArn:
     Description: KMS Key for S3 Bucket containing Amazon Connect Chat Transcripts
     Value:
       Fn::GetAtt: 'rKMSKeyAmazonConnectChatTranscripts.Arn'
-  oS3BucketAmazonConnectScheduledReports:
+    Export:
+      Name: !Sub ${AWS::StackName}-oKMSKeyAmazonConnectChatTranscriptsArn
+  oS3BucketAmazonConnectScheduledReportsBucketName:
     Description: S3 Bucket Name for Amazon Connect Scheduled Reports
     Value:
       Ref: rS3BucketAmazonConnectScheduledReports
-  oKMSKeyAmazonConnectScheduledReports:
+    Export:
+      Name: !Sub ${AWS::StackName}-oS3BucketAmazonConnectScheduledReportsBucketName
+  oKMSKeyAmazonConnectScheduledReportsArn:
     Description: KMS Key for S3 Bucket containing Amazon Connect Scheduled Reports
     Value:
       Fn::GetAtt: 'rKMSKeyAmazonConnectScheduledReports.Arn'
+    Export:
+      Name: !Sub ${AWS::StackName}-oKMSKeyAmazonConnectScheduledReportsArn
