@@ -36,7 +36,7 @@ Metadata:
         default: Connect Instance Name
 
 Resources:
-
+# Storage of Call Recording/Chat Transcripts/Scheduled Reports #
 ## KMS Keys for Amazon Connect to use when storing objects in S3 ##
   rKMSKeyAmazonConnectCallRecordings:
     Type: AWS::KMS::Key
@@ -121,7 +121,6 @@ Resources:
           Condition:
             'Null':
               kms:EncryptionContext:aws:connect:OrganizationId: 'true'
-
   rKMSKeyAmazonConnectChatTranscripts:
     Type: AWS::KMS::Key
     Properties:
@@ -205,7 +204,6 @@ Resources:
           Condition:
             'Null':
               kms:EncryptionContext:aws:connect:OrganizationId: 'true'
-
   rKMSKeyAmazonConnectScheduledReports:
     Type: AWS::KMS::Key
     Properties:
@@ -349,7 +347,6 @@ Resources:
             - s3:Put*
           Resource:
             - !Sub ${rS3BucketAmazonConnectCallRecordings.Arn}/CALL_RECORDINGS/*
-
   rS3BucketPolicyAmazonConnectChatTranscripts:
     Type: AWS::S3::BucketPolicy
     Properties: 
@@ -368,7 +365,6 @@ Resources:
             - s3:Put*
           Resource:
             - !Sub ${rS3BucketAmazonConnectChatTranscripts.Arn}/CHAT_TRANSCRIPTS/*
-
   rS3BucketPolicyAmazonConnectScheduledReports:
     Type: AWS::S3::BucketPolicy
     Properties: 
@@ -387,6 +383,103 @@ Resources:
             - s3:Put*
           Resource:
             - !Sub ${rS3BucketAmazonConnectScheduledReports.Arn}/SCHEDULED_REPORTS/*
+
+# Streaming/Storage of Call Trace Records and Agent Events Streams #
+## KMS Keys for Kinesis to use ##
+  rKMSKeyKinesisAmazonConnectCallTraceRecords:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: "Kinesis KMS Key for Amazon Connect Call Trace Records"
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: Allow administration of the key
+          Effect: Allow
+          Principal:
+            AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+          Action: kms:*
+          Resource: "*"
+        - Sid: Allow access through Amazon Kinesis for all principals in the account that
+            are authorized to use Amazon Kinesis
+          Effect: Allow
+          Principal:
+            AWS: "*"
+          Action:
+          - kms:Encrypt
+          - kms:Decrypt
+          - kms:ReEncrypt*
+          - kms:GenerateDataKey*
+          - kms:DescribeKey
+          Resource: "*"
+          Condition:
+            StringEquals:
+              kms:ViaService: !Sub kinesis.${AWS::Region}.amazonaws.com
+              kms:CallerAccount: !Ref "AWS::AccountId"
+  rKMSKeyKinesisAmazonConnectAgentEvents:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: "Kinesis KMS Key for Amazon Connect Agent Events"
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: Allow administration of the key
+          Effect: Allow
+          Principal:
+            AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+          Action: kms:*
+          Resource: "*"
+        - Sid: Allow access through Amazon Kinesis for all principals in the account that
+            are authorized to use Amazon Kinesis
+          Effect: Allow
+          Principal:
+            AWS: "*"
+          Action:
+          - kms:Encrypt
+          - kms:Decrypt
+          - kms:ReEncrypt*
+          - kms:GenerateDataKey*
+          - kms:DescribeKey
+          Resource: "*"
+          Condition:
+            StringEquals:
+              kms:ViaService: !Sub kinesis.${AWS::Region}.amazonaws.com
+              kms:CallerAccount: !Ref "AWS::AccountId"
+
+## KMS Key Aliases for Kinesis Streams ##
+  rKeyAliasKinesisAmazonConnectCallTraceRecords:
+    Type: 'AWS::KMS::Alias'
+    Properties:
+      AliasName: !Sub 'alias/kinesisstream-${pEnvironment}-${pInstanceName}-calltracerecords'
+      TargetKeyId: !Ref rKMSKeyKinesisAmazonConnectCallTraceRecords
+  rKeyAliasKinesisAmazonConnectAgentEvents:
+    Type: 'AWS::KMS::Alias'
+    Properties:
+      AliasName: !Sub 'alias/kinesisstream-${pEnvironment}-${pInstanceName}-agentevents'
+      TargetKeyId: !Ref rKMSKeyKinesisAmazonConnectAgentEvents
+
+## Kinesis Streams ##
+  rKinesisStreamAmazonConnectCallTraceRecords:
+    Type: AWS::Kinesis::Stream
+    Properties:
+      Name: !Sub 'connect-${pEnvironment}-${pInstanceName}-calltracerecords'
+      RetentionPeriodHours: 24
+      StreamEncryption:
+        EncryptionType: KMS
+        KeyId: !GetAtt 'rKMSKeyKinesisAmazonConnectCallTraceRecords.Arn'
+      StreamModeDetails:
+        StreamMode: ON_DEMAND
+  rKinesisStreamAmazonConnectAgentEvents:
+    Type: AWS::Kinesis::Stream
+    Properties:
+      Name: !Sub 'connect-${pEnvironment}-${pInstanceName}-agentevents'
+      RetentionPeriodHours: 24
+      StreamEncryption:
+        EncryptionType: KMS
+        KeyId: !GetAtt 'rKMSKeyKinesisAmazonConnectAgentEvents.Arn'
+      StreamModeDetails:
+        StreamMode: ON_DEMAND
 
 ## Amazon Connect Instance ##
   rConnectInstance:
@@ -417,7 +510,6 @@ Resources:
             EncryptionType: KMS
             KeyId: !GetAtt 'rKMSKeyAmazonConnectCallRecordings.Arn'
       StorageType: S3
-
   rConnectInstanceStorageConfigChatTranscripts:
     Type: AWS::Connect::InstanceStorageConfig
     Properties: 
@@ -430,7 +522,6 @@ Resources:
             EncryptionType: KMS
             KeyId: !GetAtt 'rKMSKeyAmazonConnectChatTranscripts.Arn'
       StorageType: S3
-
   rConnectInstanceStorageConfigScheduledReports:
     Type: AWS::Connect::InstanceStorageConfig
     Properties: 
@@ -443,6 +534,22 @@ Resources:
             EncryptionType: KMS
             KeyId: !GetAtt 'rKMSKeyAmazonConnectScheduledReports.Arn'
       StorageType: S3
+  rConnectInstanceStorageConfigCallTraceRecords:
+    Type: AWS::Connect::InstanceStorageConfig
+    Properties: 
+      InstanceArn: !Ref rConnectInstance
+      ResourceType: CONTACT_TRACE_RECORDS
+      StorageType: KINESIS_STREAM
+      KinesisStreamConfig:
+        StreamArn: !Ref rKinesisStreamAmazonConnectCallTraceRecords
+  rConnectInstanceStorageConfigAgentEvents:
+    Type: AWS::Connect::InstanceStorageConfig
+    Properties: 
+      InstanceArn: !Ref rConnectInstance
+      ResourceType: AGENT_EVENTS
+      StorageType: KINESIS_STREAM
+      KinesisStreamConfig:
+        StreamArn: !Ref rKinesisStreamAmazonConnectAgentEvents
 
 Outputs:
   oConnectInstanceArn:
@@ -487,3 +594,15 @@ Outputs:
       Fn::GetAtt: 'rKMSKeyAmazonConnectScheduledReports.Arn'
     Export:
       Name: !Sub ${AWS::StackName}-oKMSKeyAmazonConnectScheduledReportsArn
+  oKinesisStreamAmazonConnectCallTraceRecordsStreamName:
+    Description: Kinesis Stream Name for Amazon Connect Call Trace Records
+    Value:
+      Fn::GetAtt: 'rKinesisStreamAmazonConnectCallTraceRecords.Arn'
+    Export:
+      Name: !Sub ${AWS::StackName}-oKinesisStreamAmazonConnectCallTraceRecordsStreamName
+  oKinesisStreamAmazonConnectAgentEventsStreamName:
+    Description: Kinesis Stream Name for Amazon Connect Agent Events
+    Value:
+      Fn::GetAtt: 'rKinesisStreamAmazonConnectAgentEvents.Arn'
+    Export:
+      Name: !Sub ${AWS::StackName}-oKinesisStreamAmazonConnectAgentEventsStreamName
