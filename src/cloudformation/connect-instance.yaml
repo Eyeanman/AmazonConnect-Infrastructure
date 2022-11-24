@@ -413,7 +413,7 @@ Resources:
           Principal:
             AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
             Service:
-              - !Sub kinesis.${AWS::Region}.amazonaws.com
+              - firehose.amazonaws.com
           Action:
             - s3:Get*
             - s3:List*
@@ -431,7 +431,7 @@ Resources:
           Principal:
             AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
             Service:
-              - !Sub kinesis.${AWS::Region}.amazonaws.com
+              - firehose.amazonaws.com
           Action:
             - s3:Get*
             - s3:List*
@@ -517,7 +517,7 @@ Resources:
         - Sid: Allow use of the key
           Effect: Allow
           Principal:
-            AWS: !Ref rIAMRoleKinesisFirehoseAmazonConnectContactTraceRecords
+            AWS: "*"
           Action:
           - kms:Encrypt
           - kms:Decrypt
@@ -542,7 +542,7 @@ Resources:
         - Sid: Allow use of the key
           Effect: Allow
           Principal:
-            AWS: !Ref rIAMRoleKinesisFirehoseAmazonConnectAgentEvents
+            AWS: "*"
           Action:
           - kms:Encrypt
           - kms:Decrypt
@@ -689,24 +689,30 @@ Resources:
     Properties:
       DeliveryStreamName: !Sub 'connect-${pEnvironment}-${pInstanceName}-contacttracerecords-s3'
       DeliveryStreamType: KinesisStreamAsSource
+      KinesisStreamSourceConfiguration:
+        KinesisStreamARN: !GetAtt rKinesisStreamAmazonConnectContactTraceRecords.Arn
+        RoleARN: !GetAtt rIAMRoleKinesisFirehoseAmazonConnectContactTraceRecords.Arn
       S3DestinationConfiguration:
         BucketARN: !GetAtt rS3BucketAmazonConnectContactTraceRecords.Arn
         EncryptionConfiguration: 
           KMSEncryptionConfig:
             AWSKMSKeyARN: !GetAtt rKMSKeyKinesisFirehoseAmazonConnectContactTraceRecords.Arn
-        Prefix: CONTACT_TRACE_RECORDS
+        Prefix: CONTACT_TRACE_RECORDS/
         RoleARN: !GetAtt rIAMRoleKinesisFirehoseAmazonConnectContactTraceRecords.Arn
   rKinesisFirehoseDeliveryStreamAmazonConnectAgentEvents:
     Type: AWS::KinesisFirehose::DeliveryStream
     Properties:
       DeliveryStreamName: !Sub 'connect-${pEnvironment}-${pInstanceName}-agentevents-s3'
       DeliveryStreamType: KinesisStreamAsSource
+      KinesisStreamSourceConfiguration:
+        KinesisStreamARN: !GetAtt rKinesisStreamAmazonConnectAgentEvents.Arn
+        RoleARN: !GetAtt rIAMRoleKinesisFirehoseAmazonConnectAgentEvents.Arn
       S3DestinationConfiguration:
         BucketARN: !GetAtt rS3BucketAmazonConnectAgentEvents.Arn
         EncryptionConfiguration: 
           KMSEncryptionConfig:
             AWSKMSKeyARN: !GetAtt rKMSKeyKinesisFirehoseAmazonConnectAgentEvents.Arn
-        Prefix: AGENT_EVENTS
+        Prefix: AGENT_EVENTS/
         RoleARN: !GetAtt rIAMRoleKinesisFirehoseAmazonConnectAgentEvents.Arn
 
 # Amazon Connect Instance #
