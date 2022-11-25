@@ -11,12 +11,18 @@ Parameters:
       - sit
       - preprod
       - prod
-  pInstanceName:
+  pConnectInstanceName:
     Type: String
     Description: Exclude Region/Environment, Max length of 10
     MinLength: 3
     MaxLength: 10
     AllowedPattern: (?=^.{3,63}$)(?!^(\d+\.)+\d+$)(^(([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])\.)*([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])$)
+  pConnectInstanceAttributeAutoResolveBestVoices:
+    Type: String
+    Description: Automatically utilise the best voice instead of standard Polly
+    AllowedValues:
+      - True
+      - False
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -28,11 +34,11 @@ Metadata:
     - Label:
         default: Amazon Connect
       Parameters:
-      - pInstanceName
+      - pConnectInstanceName
     ParameterLabels:
       pEnvironment:
         default: Environment
-      pInstanceName:
+      pConnectInstanceName:
         default: Connect Instance Name
 
 Resources:
@@ -292,38 +298,38 @@ Resources:
   rKeyAliasAmazonConnectCallRecordings:
     Type: 'AWS::KMS::Alias'
     Properties:
-      AliasName: !Sub 'alias/connect-${pEnvironment}-${pInstanceName}-callrecordings'
+      AliasName: !Sub 'alias/connect-${pEnvironment}-${pConnectInstanceName}-callrecordings'
       TargetKeyId: !Ref rKMSKeyAmazonConnectCallRecordings
   rKeyAliasAmazonConnectChatTranscripts:
     Type: 'AWS::KMS::Alias'
     Properties:
-      AliasName: !Sub 'alias/connect-${pEnvironment}-${pInstanceName}-chattranscripts'
+      AliasName: !Sub 'alias/connect-${pEnvironment}-${pConnectInstanceName}-chattranscripts'
       TargetKeyId: !Ref rKMSKeyAmazonConnectChatTranscripts
   rKeyAliasAmazonConnectScheduledReports:
     Type: 'AWS::KMS::Alias'
     Properties:
-      AliasName: !Sub 'alias/connect-${pEnvironment}-${pInstanceName}-scheduledreports'
+      AliasName: !Sub 'alias/connect-${pEnvironment}-${pConnectInstanceName}-scheduledreports'
       TargetKeyId: !Ref rKMSKeyAmazonConnectScheduledReports
 
 ## S3 Buckets for Amazon Connect Objects ##
   rS3BucketAmazonConnectCallRecordings:
     Type: AWS::S3::Bucket
     Properties: 
-      BucketName: !Sub 'connect-${pEnvironment}-${pInstanceName}-callrecordings'
+      BucketName: !Sub 'connect-${pEnvironment}-${pConnectInstanceName}-callrecordings'
       AccessControl: Private
       VersioningConfiguration:
         Status: Enabled
   rS3BucketAmazonConnectChatTranscripts:
     Type: AWS::S3::Bucket
     Properties: 
-      BucketName: !Sub 'connect-${pEnvironment}-${pInstanceName}-chattranscripts'
+      BucketName: !Sub 'connect-${pEnvironment}-${pConnectInstanceName}-chattranscripts'
       AccessControl: Private
       VersioningConfiguration:
         Status: Enabled
   rS3BucketAmazonConnectScheduledReports:
     Type: AWS::S3::Bucket
     Properties: 
-      BucketName: !Sub 'connect-${pEnvironment}-${pInstanceName}-scheduledreports'
+      BucketName: !Sub 'connect-${pEnvironment}-${pConnectInstanceName}-scheduledreports'
       AccessControl: Private
       VersioningConfiguration:
         Status: Enabled
@@ -389,14 +395,14 @@ Resources:
   rS3BucketAmazonConnectContactTraceRecords:
     Type: AWS::S3::Bucket
     Properties: 
-      BucketName: !Sub 'connect-${pEnvironment}-${pInstanceName}-contacttracerecords'
+      BucketName: !Sub 'connect-${pEnvironment}-${pConnectInstanceName}-contacttracerecords'
       AccessControl: Private
       VersioningConfiguration:
         Status: Enabled
   rS3BucketAmazonConnectAgentEvents:
     Type: AWS::S3::Bucket
     Properties: 
-      BucketName: !Sub 'connect-${pEnvironment}-${pInstanceName}-agentevents'
+      BucketName: !Sub 'connect-${pEnvironment}-${pConnectInstanceName}-agentevents'
       AccessControl: Private
       VersioningConfiguration:
         Status: Enabled
@@ -555,19 +561,19 @@ Resources:
   rKeyAliasKinesisAmazonConnectContactTraceRecords:
     Type: 'AWS::KMS::Alias'
     Properties:
-      AliasName: !Sub 'alias/kinesisstream-${pEnvironment}-${pInstanceName}-ContactTraceRecords'
+      AliasName: !Sub 'alias/kinesisstream-${pEnvironment}-${pConnectInstanceName}-ContactTraceRecords'
       TargetKeyId: !Ref rKMSKeyKinesisAmazonConnectContactTraceRecords
   rKeyAliasKinesisAmazonConnectAgentEvents:
     Type: 'AWS::KMS::Alias'
     Properties:
-      AliasName: !Sub 'alias/kinesisstream-${pEnvironment}-${pInstanceName}-agentevents'
+      AliasName: !Sub 'alias/kinesisstream-${pEnvironment}-${pConnectInstanceName}-agentevents'
       TargetKeyId: !Ref rKMSKeyKinesisAmazonConnectAgentEvents
 
 ## Kinesis Streams ##
   rKinesisStreamAmazonConnectContactTraceRecords:
     Type: AWS::Kinesis::Stream
     Properties:
-      Name: !Sub 'connect-${pEnvironment}-${pInstanceName}-contacttracerecords'
+      Name: !Sub 'connect-${pEnvironment}-${pConnectInstanceName}-contacttracerecords'
       RetentionPeriodHours: 24
       StreamEncryption:
         EncryptionType: KMS
@@ -577,7 +583,7 @@ Resources:
   rKinesisStreamAmazonConnectAgentEvents:
     Type: AWS::Kinesis::Stream
     Properties:
-      Name: !Sub 'connect-${pEnvironment}-${pInstanceName}-agentevents'
+      Name: !Sub 'connect-${pEnvironment}-${pConnectInstanceName}-agentevents'
       RetentionPeriodHours: 24
       StreamEncryption:
         EncryptionType: KMS
@@ -589,7 +595,7 @@ Resources:
   rIAMManagedPolicyAmazonConnectContactTraceRecords:
     Type: "AWS::IAM::ManagedPolicy"
     Properties:
-      ManagedPolicyName: !Sub 'connect-${pEnvironment}-${pInstanceName}-contacttracerecords-s3'
+      ManagedPolicyName: !Sub 'connect-${pEnvironment}-${pConnectInstanceName}-contacttracerecords-s3'
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -620,7 +626,7 @@ Resources:
   rIAMManagedPolicyAmazonConnectAgentEvents:
     Type: "AWS::IAM::ManagedPolicy"
     Properties:
-      ManagedPolicyName: !Sub 'connect-${pEnvironment}-${pInstanceName}-agentevents-s3'
+      ManagedPolicyName: !Sub 'connect-${pEnvironment}-${pConnectInstanceName}-agentevents-s3'
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -653,7 +659,7 @@ Resources:
   rIAMRoleKinesisFirehoseAmazonConnectContactTraceRecords:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub 'connect-${pEnvironment}-${pInstanceName}-contacttracerecords-s3'
+      RoleName: !Sub 'connect-${pEnvironment}-${pConnectInstanceName}-contacttracerecords-s3'
       Description: Allow Kinesis Firehose to write Contact Trace Records to S3
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
@@ -669,7 +675,7 @@ Resources:
   rIAMRoleKinesisFirehoseAmazonConnectAgentEvents:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub 'connect-${pEnvironment}-${pInstanceName}-agentevents-s3'
+      RoleName: !Sub 'connect-${pEnvironment}-${pConnectInstanceName}-agentevents-s3'
       Description: Allow Kinesis Firehose to write Agent Events to S3
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
@@ -687,7 +693,7 @@ Resources:
   rKinesisFirehoseDeliveryStreamAmazonConnectContactTraceRecords:
     Type: AWS::KinesisFirehose::DeliveryStream
     Properties:
-      DeliveryStreamName: !Sub 'connect-${pEnvironment}-${pInstanceName}-contacttracerecords-s3'
+      DeliveryStreamName: !Sub 'connect-${pEnvironment}-${pConnectInstanceName}-contacttracerecords-s3'
       DeliveryStreamType: KinesisStreamAsSource
       KinesisStreamSourceConfiguration:
         KinesisStreamARN: !GetAtt rKinesisStreamAmazonConnectContactTraceRecords.Arn
@@ -702,7 +708,7 @@ Resources:
   rKinesisFirehoseDeliveryStreamAmazonConnectAgentEvents:
     Type: AWS::KinesisFirehose::DeliveryStream
     Properties:
-      DeliveryStreamName: !Sub 'connect-${pEnvironment}-${pInstanceName}-agentevents-s3'
+      DeliveryStreamName: !Sub 'connect-${pEnvironment}-${pConnectInstanceName}-agentevents-s3'
       DeliveryStreamType: KinesisStreamAsSource
       KinesisStreamSourceConfiguration:
         KinesisStreamARN: !GetAtt rKinesisStreamAmazonConnectAgentEvents.Arn
@@ -721,14 +727,14 @@ Resources:
     Type: AWS::Connect::Instance
     Properties: 
       Attributes: 
-        AutoResolveBestVoices: True
+        AutoResolveBestVoices: !Ref pConnectInstanceAttributeAutoResolveBestVoices
         ContactflowLogs: True
         ContactLens: True
         EarlyMedia: True
         InboundCalls: True
         OutboundCalls: True
       IdentityManagementType: CONNECT_MANAGED
-      InstanceAlias: !Sub '${pEnvironment}-${pInstanceName}-${AWS::Region}'
+      InstanceAlias: !Sub '${pEnvironment}-${pConnectInstanceName}-${AWS::Region}'
     DeletionPolicy: "Retain"
     UpdateReplacePolicy : "Retain"
 
@@ -799,43 +805,25 @@ Outputs:
       Ref: rS3BucketAmazonConnectCallRecordings
     Export:
       Name: !Sub ${AWS::StackName}-oS3BucketAmazonConnectCallRecordingsBucketName
-  oKMSKeyAmazonConnectCallRecordingsArn:
-    Description: KMS Key for S3 Bucket containing Amazon Connect Call Recordings
-    Value:
-      Fn::GetAtt: 'rKMSKeyAmazonConnectCallRecordings.Arn'
-    Export:
-      Name: !Sub ${AWS::StackName}-oKMSKeyAmazonConnectCallRecordingsArn
   oS3BucketAmazonConnectChatTranscriptsBucketName:
     Description: S3 Bucket Name for Amazon Connect Chat Transcripts
     Value:
       Ref: rS3BucketAmazonConnectChatTranscripts
     Export:
       Name: !Sub ${AWS::StackName}-oS3BucketAmazonConnectChatTranscriptsBucketName
-  oKMSKeyAmazonConnectChatTranscriptsArn:
-    Description: KMS Key for S3 Bucket containing Amazon Connect Chat Transcripts
-    Value:
-      Fn::GetAtt: 'rKMSKeyAmazonConnectChatTranscripts.Arn'
-    Export:
-      Name: !Sub ${AWS::StackName}-oKMSKeyAmazonConnectChatTranscriptsArn
   oS3BucketAmazonConnectScheduledReportsBucketName:
     Description: S3 Bucket Name for Amazon Connect Scheduled Reports
     Value:
       Ref: rS3BucketAmazonConnectScheduledReports
     Export:
       Name: !Sub ${AWS::StackName}-oS3BucketAmazonConnectScheduledReportsBucketName
-  oKMSKeyAmazonConnectScheduledReportsArn:
-    Description: KMS Key for S3 Bucket containing Amazon Connect Scheduled Reports
-    Value:
-      Fn::GetAtt: 'rKMSKeyAmazonConnectScheduledReports.Arn'
-    Export:
-      Name: !Sub ${AWS::StackName}-oKMSKeyAmazonConnectScheduledReportsArn
-  oKinesisStreamAmazonConnectContactTraceRecordsStreamName:
+  oKinesisStreamAmazonConnectContactTraceRecordsStreamArn:
     Description: Kinesis Stream Name for Amazon Connect Contact Trace Records
     Value:
       Fn::GetAtt: 'rKinesisStreamAmazonConnectContactTraceRecords.Arn'
     Export:
       Name: !Sub ${AWS::StackName}-oKinesisStreamAmazonConnectContactTraceRecordsStreamName
-  oKinesisStreamAmazonConnectAgentEventsStreamName:
+  oKinesisStreamAmazonConnectAgentEventsStreamArn:
     Description: Kinesis Stream Name for Amazon Connect Agent Events
     Value:
       Fn::GetAtt: 'rKinesisStreamAmazonConnectAgentEvents.Arn'
