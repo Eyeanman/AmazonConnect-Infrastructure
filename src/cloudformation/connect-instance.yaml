@@ -157,30 +157,6 @@ Resources:
             StringEquals:
               kms:CallerAccount: !Ref "AWS::AccountId"
               kms:ViaService: !Sub s3.${AWS::Region}.amazonaws.com
-        - Sid: Restrict direct usage
-          Effect: Deny
-          Principal:
-            AWS: "*"
-          Action:
-          - kms:Encrypt
-          - kms:GenerateDataKey*
-          - kms:ReEncrypt*
-          Resource: "*"
-          Condition:
-            'Null':
-              kms:ViaService: 'true'
-        - Sid: Restrict usage to Connect data
-          Effect: Deny
-          Principal:
-            AWS: "*"
-          Action:
-          - kms:Encrypt
-          - kms:GenerateDataKey*
-          - kms:ReEncrypt*
-          Resource: "*"
-          Condition:
-            'Null':
-              kms:EncryptionContext:aws:connect:OrganizationId: 'true'
         - Sid: Allow access through Amazon Kinesis for all principals in the account that
             are authorized to use Amazon Kinesis
           Effect: Allow
@@ -193,10 +169,6 @@ Resources:
           - kms:GenerateDataKey*
           - kms:DescribeKey
           Resource: "*"
-          Condition:
-            StringEquals:
-              kms:ViaService: !Sub kinesis.${AWS::Region}.amazonaws.com
-              kms:CallerAccount: !Ref "AWS::AccountId"
 ## KMS Key Aliases ##
   rKeyAliasAmazonConnectData:
     Type: 'AWS::KMS::Alias'
