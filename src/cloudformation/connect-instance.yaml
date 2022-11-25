@@ -201,7 +201,7 @@ Resources:
   rKeyAliasAmazonConnectData:
     Type: 'AWS::KMS::Alias'
     Properties:
-      AliasName: !Sub 'alias/connect-${pEnvironment}-${pConnectInstanceName}-callrecordings'
+      AliasName: !Sub 'alias/connect-${pEnvironment}-${pConnectInstanceName}-data'
       TargetKeyId: !Ref rKMSKeyAmazonConnectData
 
 ## S3 Buckets for Amazon Connect Objects ##
