@@ -59,6 +59,16 @@ Parameters:
     AllowedValues:
       - True
       - False
+  pKinesisStreamAmazonConnectContactTraceRecordsShards:
+    Type: Number
+    Description: Shard Count for Contact Trace Records, One shard provides an ingest capacity of 1 MB/second or 1,000 records/second.
+    Default: 1
+    MinValue: 1
+  pKinesisStreamAmazonConnectAgentEventsShards:
+    Type: Number
+    Description: Shard Count for Agent Events, One shard provides an ingest capacity of 1 MB/second or 1,000 records/second.
+    Default: 1
+    MinValue: 1
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -77,6 +87,11 @@ Metadata:
       - pConnectInstanceAttributeEarlyMedia
       - pConnectInstanceAttributeInboundCalls
       - pConnectInstanceAttributeOutboundCalls
+    - Label:
+        default: Amazon Connect Data Streaming
+      Parameters:
+      - pKinesisStreamAmazonConnectContactTraceRecordsShards
+      - pKinesisStreamAmazonConnectAgentEventsShards
     ParameterLabels:
       pEnvironment:
         default: Environment
@@ -94,6 +109,10 @@ Metadata:
         default: Enable Inbound Calls
       pConnectInstanceAttributeOutboundCalls:
         default: Enable Outbound Calls
+      pKinesisStreamAmazonConnectContactTraceRecordsShards:
+        default: Contact Trace Records Data Streaming Shards
+      pKinesisStreamAmazonConnectAgentEventsShards:
+        default: Agent Events Data Streaming Shards
 
 Resources:
 # Storage of Call Recording/Chat Transcripts/Scheduled Reports #
@@ -360,7 +379,8 @@ Resources:
         EncryptionType: KMS
         KeyId: !GetAtt 'rKMSKeyAmazonConnectData.Arn'
       StreamModeDetails:
-        StreamMode: ON_DEMAND
+        StreamMode: PROVISIONED
+      ShardCount: !Ref pKinesisStreamAmazonConnectContactTraceRecordsShards
   rKinesisStreamAmazonConnectAgentEvents:
     Type: AWS::Kinesis::Stream
     Properties:
@@ -370,7 +390,8 @@ Resources:
         EncryptionType: KMS
         KeyId: !GetAtt 'rKMSKeyAmazonConnectData.Arn'
       StreamModeDetails:
-        StreamMode: ON_DEMAND
+        StreamMode: PROVISIONED
+      ShardCount: !Ref pKinesisStreamAmazonConnectAgentEventsShards
 
 ## IAM Polices for Kinesis Firehose Roles ##
   rIAMManagedPolicyAmazonConnectContactTraceRecords:
