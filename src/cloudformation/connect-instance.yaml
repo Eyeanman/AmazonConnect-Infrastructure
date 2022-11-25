@@ -371,6 +371,11 @@ Resources:
     Properties: 
       BucketName: !Sub 'connect-${pEnvironment}-${pConnectInstanceName}-callrecordings'
       AccessControl: Private
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: True
+        BlockPublicPolicy: True
+        IgnorePublicAcls: True
+        RestrictPublicBuckets: True
       VersioningConfiguration:
         Status: Enabled
   rS3BucketAmazonConnectChatTranscripts:
@@ -378,6 +383,11 @@ Resources:
     Properties: 
       BucketName: !Sub 'connect-${pEnvironment}-${pConnectInstanceName}-chattranscripts'
       AccessControl: Private
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: True
+        BlockPublicPolicy: True
+        IgnorePublicAcls: True
+        RestrictPublicBuckets: True
       VersioningConfiguration:
         Status: Enabled
   rS3BucketAmazonConnectScheduledReports:
@@ -385,6 +395,11 @@ Resources:
     Properties: 
       BucketName: !Sub 'connect-${pEnvironment}-${pConnectInstanceName}-scheduledreports'
       AccessControl: Private
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: True
+        BlockPublicPolicy: True
+        IgnorePublicAcls: True
+        RestrictPublicBuckets: True
       VersioningConfiguration:
         Status: Enabled
 
@@ -451,6 +466,11 @@ Resources:
     Properties: 
       BucketName: !Sub 'connect-${pEnvironment}-${pConnectInstanceName}-contacttracerecords'
       AccessControl: Private
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: True
+        BlockPublicPolicy: True
+        IgnorePublicAcls: True
+        RestrictPublicBuckets: True
       VersioningConfiguration:
         Status: Enabled
   rS3BucketAmazonConnectAgentEvents:
@@ -458,6 +478,11 @@ Resources:
     Properties: 
       BucketName: !Sub 'connect-${pEnvironment}-${pConnectInstanceName}-agentevents'
       AccessControl: Private
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: True
+        BlockPublicPolicy: True
+        IgnorePublicAcls: True
+        RestrictPublicBuckets: True
       VersioningConfiguration:
         Status: Enabled
 
