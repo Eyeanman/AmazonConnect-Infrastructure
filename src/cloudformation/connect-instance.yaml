@@ -20,6 +20,14 @@ Parameters:
   pConnectInstanceAttributeAutoResolveBestVoices:
     Type: String
     Description: Automatically utilise the best voice instead of standard Polly
+    Default: True
+    AllowedValues:
+      - True
+      - False
+  pConnectInstanceAttributeContactFlowLogs:
+    Type: String
+    Description: Enable Contact Flow logs for this instance
+    Default: True
     AllowedValues:
       - True
       - False
@@ -35,11 +43,17 @@ Metadata:
         default: Amazon Connect
       Parameters:
       - pConnectInstanceName
+      - pConnectInstanceAttributeAutoResolveBestVoices
+      - pConnectInstanceAttributeContactFlowLogs
     ParameterLabels:
       pEnvironment:
         default: Environment
       pConnectInstanceName:
         default: Connect Instance Name
+      pConnectInstanceAttributeAutoResolveBestVoices:
+        default: Auto Resolve Best Voices
+      pConnectInstanceAttributeContactFlowLogs:
+        default: Enable Contact Flow Logs
 
 Resources:
 # Storage of Call Recording/Chat Transcripts/Scheduled Reports #
@@ -728,7 +742,7 @@ Resources:
     Properties: 
       Attributes: 
         AutoResolveBestVoices: !Ref pConnectInstanceAttributeAutoResolveBestVoices
-        ContactflowLogs: True
+        ContactflowLogs: !Ref pConnectInstanceAttributeContactFlowLogs
         ContactLens: True
         EarlyMedia: True
         InboundCalls: True
