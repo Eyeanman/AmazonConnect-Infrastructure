@@ -98,7 +98,7 @@ Metadata:
 Resources:
 # Storage of Call Recording/Chat Transcripts/Scheduled Reports #
 ## KMS Keys for Amazon Connect to use when storing objects in S3 ##
-  rKMSKeyAmazonConnectCallRecordings:
+  rKMSKeyAmazonConnectData:
     Type: AWS::KMS::Key
     Properties:
       Description: "S3 Bucket KMS Key for Call Recordings"
@@ -181,189 +181,28 @@ Resources:
           Condition:
             'Null':
               kms:EncryptionContext:aws:connect:OrganizationId: 'true'
-  rKMSKeyAmazonConnectChatTranscripts:
-    Type: AWS::KMS::Key
-    Properties:
-      Description: "S3 Bucket KMS Key for Chat Transcripts"
-      EnableKeyRotation: true
-      KeyPolicy:
-        Version: '2012-10-17'
-        Statement:
-        - Sid: Allow administration of the key
+        - Sid: Allow access through Amazon Kinesis for all principals in the account that
+            are authorized to use Amazon Kinesis
           Effect: Allow
-          Principal:
-            AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
-          Action: kms:*
-          Resource: "*"
-        - Sid: Allow access through Connect for all principals in the account that are authorized
-            to use Connect
-          Effect: Allow
-          Principal:
-            AWS: "*"
-          Action:
-          - kms:CreateGrant
-          - kms:Describe*
-          - kms:Get*
-          - kms:List*
-          Resource: "*"
-          Condition:
-            StringEquals:
-              kms:CallerAccount: !Ref "AWS::AccountId"
-              kms:ViaService: !Sub connect.${AWS::Region}.amazonaws.com
-        - Sid: Allow Connect to directly describe the key
-          Effect: Allow
-          Principal:
-            Service: connect.amazonaws.com
-          Action:
-          - kms:Describe*
-          - kms:Get*
-          - kms:List*
-          Resource: "*"
-        - Sid: Allow direct access to key metadata to the account
-          Effect: Allow
-          Principal:
-            AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
-          Action:
-          - kms:Describe*
-          - kms:Get*
-          - kms:List*
-          - kms:RevokeGrant
-          Resource: "*"
-        - Sid: Allow access through S3 for all principals in the account that are authorized
-            to use S3
-          Effect: Allow
-          Principal:
-            AWS: "*"
-          Action: kms:Decrypt
-          Resource: "*"
-          Condition:
-            StringEquals:
-              kms:CallerAccount: !Ref "AWS::AccountId"
-              kms:ViaService: !Sub s3.${AWS::Region}.amazonaws.com
-        - Sid: Restrict direct usage
-          Effect: Deny
           Principal:
             AWS: "*"
           Action:
           - kms:Encrypt
-          - kms:GenerateDataKey*
+          - kms:Decrypt
           - kms:ReEncrypt*
-          Resource: "*"
-          Condition:
-            'Null':
-              kms:ViaService: 'true'
-        - Sid: Restrict usage to Connect data
-          Effect: Deny
-          Principal:
-            AWS: "*"
-          Action:
-          - kms:Encrypt
           - kms:GenerateDataKey*
-          - kms:ReEncrypt*
-          Resource: "*"
-          Condition:
-            'Null':
-              kms:EncryptionContext:aws:connect:OrganizationId: 'true'
-  rKMSKeyAmazonConnectScheduledReports:
-    Type: AWS::KMS::Key
-    Properties:
-      Description: "S3 Bucket KMS Key for Scheduled Reports"
-      EnableKeyRotation: true
-      KeyPolicy:
-        Version: '2012-10-17'
-        Statement:
-        - Sid: Allow administration of the key
-          Effect: Allow
-          Principal:
-            AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
-          Action: kms:*
-          Resource: "*"
-        - Sid: Allow access through Connect for all principals in the account that are authorized
-            to use Connect
-          Effect: Allow
-          Principal:
-            AWS: "*"
-          Action:
-          - kms:CreateGrant
-          - kms:Describe*
-          - kms:Get*
-          - kms:List*
+          - kms:DescribeKey
           Resource: "*"
           Condition:
             StringEquals:
+              kms:ViaService: !Sub kinesis.${AWS::Region}.amazonaws.com
               kms:CallerAccount: !Ref "AWS::AccountId"
-              kms:ViaService: !Sub connect.${AWS::Region}.amazonaws.com
-        - Sid: Allow Connect to directly describe the key
-          Effect: Allow
-          Principal:
-            Service: connect.amazonaws.com
-          Action:
-          - kms:Describe*
-          - kms:Get*
-          - kms:List*
-          Resource: "*"
-        - Sid: Allow direct access to key metadata to the account
-          Effect: Allow
-          Principal:
-            AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
-          Action:
-          - kms:Describe*
-          - kms:Get*
-          - kms:List*
-          - kms:RevokeGrant
-          Resource: "*"
-        - Sid: Allow access through S3 for all principals in the account that are authorized
-            to use S3
-          Effect: Allow
-          Principal:
-            AWS: "*"
-          Action: kms:Decrypt
-          Resource: "*"
-          Condition:
-            StringEquals:
-              kms:CallerAccount: !Ref "AWS::AccountId"
-              kms:ViaService: !Sub s3.${AWS::Region}.amazonaws.com
-        - Sid: Restrict direct usage
-          Effect: Deny
-          Principal:
-            AWS: "*"
-          Action:
-          - kms:Encrypt
-          - kms:GenerateDataKey*
-          - kms:ReEncrypt*
-          Resource: "*"
-          Condition:
-            'Null':
-              kms:ViaService: 'true'
-        - Sid: Restrict usage to Connect data
-          Effect: Deny
-          Principal:
-            AWS: "*"
-          Action:
-          - kms:Encrypt
-          - kms:GenerateDataKey*
-          - kms:ReEncrypt*
-          Resource: "*"
-          Condition:
-            'Null':
-              kms:EncryptionContext:aws:connect:OrganizationId: 'true'
-
 ## KMS Key Aliases ##
-  rKeyAliasAmazonConnectCallRecordings:
+  rKeyAliasAmazonConnectData:
     Type: 'AWS::KMS::Alias'
     Properties:
       AliasName: !Sub 'alias/connect-${pEnvironment}-${pConnectInstanceName}-callrecordings'
-      TargetKeyId: !Ref rKMSKeyAmazonConnectCallRecordings
-  rKeyAliasAmazonConnectChatTranscripts:
-    Type: 'AWS::KMS::Alias'
-    Properties:
-      AliasName: !Sub 'alias/connect-${pEnvironment}-${pConnectInstanceName}-chattranscripts'
-      TargetKeyId: !Ref rKMSKeyAmazonConnectChatTranscripts
-  rKeyAliasAmazonConnectScheduledReports:
-    Type: 'AWS::KMS::Alias'
-    Properties:
-      AliasName: !Sub 'alias/connect-${pEnvironment}-${pConnectInstanceName}-scheduledreports'
-      TargetKeyId: !Ref rKMSKeyAmazonConnectScheduledReports
+      TargetKeyId: !Ref rKMSKeyAmazonConnectData
 
 ## S3 Buckets for Amazon Connect Objects ##
   rS3BucketAmazonConnectCallRecordings:
@@ -378,6 +217,9 @@ Resources:
         RestrictPublicBuckets: True
       VersioningConfiguration:
         Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - BucketKeyEnabled: True
   rS3BucketAmazonConnectChatTranscripts:
     Type: AWS::S3::Bucket
     Properties: 
@@ -390,6 +232,9 @@ Resources:
         RestrictPublicBuckets: True
       VersioningConfiguration:
         Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - BucketKeyEnabled: True
   rS3BucketAmazonConnectScheduledReports:
     Type: AWS::S3::Bucket
     Properties: 
@@ -402,6 +247,9 @@ Resources:
         RestrictPublicBuckets: True
       VersioningConfiguration:
         Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - BucketKeyEnabled: True
 
 ## S3 Bucket Policies for Amazon Connect Objects ##
   rS3BucketPolicyAmazonConnectCallRecordings:
@@ -473,6 +321,9 @@ Resources:
         RestrictPublicBuckets: True
       VersioningConfiguration:
         Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - BucketKeyEnabled: True
   rS3BucketAmazonConnectAgentEvents:
     Type: AWS::S3::Bucket
     Properties: 
@@ -485,6 +336,9 @@ Resources:
         RestrictPublicBuckets: True
       VersioningConfiguration:
         Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - BucketKeyEnabled: True
 
 ## S3 Bucket Policies for Amazon Connect Objects ##
   rS3BucketPolicyAmazonConnectContactTraceRecords:
@@ -524,130 +378,6 @@ Resources:
           Resource:
             - !Sub ${rS3BucketAmazonConnectAgentEvents.Arn}/AGENT_EVENTS/*
 
-## KMS Keys for Kinesis to use ##
-  rKMSKeyKinesisAmazonConnectContactTraceRecords:
-    Type: AWS::KMS::Key
-    Properties:
-      Description: "Kinesis KMS Key for Amazon Connect Contact Trace Records"
-      EnableKeyRotation: true
-      KeyPolicy:
-        Version: '2012-10-17'
-        Statement:
-        - Sid: Allow administration of the key
-          Effect: Allow
-          Principal:
-            AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
-          Action: kms:*
-          Resource: "*"
-        - Sid: Allow access through Amazon Kinesis for all principals in the account that
-            are authorized to use Amazon Kinesis
-          Effect: Allow
-          Principal:
-            AWS: "*"
-          Action:
-          - kms:Encrypt
-          - kms:Decrypt
-          - kms:ReEncrypt*
-          - kms:GenerateDataKey*
-          - kms:DescribeKey
-          Resource: "*"
-          Condition:
-            StringEquals:
-              kms:ViaService: !Sub kinesis.${AWS::Region}.amazonaws.com
-              kms:CallerAccount: !Ref "AWS::AccountId"
-  rKMSKeyKinesisAmazonConnectAgentEvents:
-    Type: AWS::KMS::Key
-    Properties:
-      Description: "Kinesis KMS Key for Amazon Connect Agent Events"
-      EnableKeyRotation: true
-      KeyPolicy:
-        Version: '2012-10-17'
-        Statement:
-        - Sid: Allow administration of the key
-          Effect: Allow
-          Principal:
-            AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
-          Action: kms:*
-          Resource: "*"
-        - Sid: Allow access through Amazon Kinesis for all principals in the account that
-            are authorized to use Amazon Kinesis
-          Effect: Allow
-          Principal:
-            AWS: "*"
-          Action:
-          - kms:Encrypt
-          - kms:Decrypt
-          - kms:ReEncrypt*
-          - kms:GenerateDataKey*
-          - kms:DescribeKey
-          Resource: "*"
-          Condition:
-            StringEquals:
-              kms:ViaService: !Sub kinesis.${AWS::Region}.amazonaws.com
-              kms:CallerAccount: !Ref "AWS::AccountId"
-  rKMSKeyKinesisFirehoseAmazonConnectContactTraceRecords:
-    Type: AWS::KMS::Key
-    Properties:
-      Description: "Kinesis Firehose KMS Key for Amazon Connect Contact Trace Records"
-      EnableKeyRotation: true
-      KeyPolicy:
-        Version: '2012-10-17'
-        Statement:
-        - Sid: Allow administration of the key
-          Effect: Allow
-          Principal:
-            AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
-          Action: kms:*
-          Resource: "*"
-        - Sid: Allow use of the key
-          Effect: Allow
-          Principal:
-            AWS: "*"
-          Action:
-          - kms:Encrypt
-          - kms:Decrypt
-          - kms:ReEncrypt*
-          - kms:GenerateDataKey*
-          - kms:DescribeKey
-          Resource: "*"
-  rKMSKeyKinesisFirehoseAmazonConnectAgentEvents:
-    Type: AWS::KMS::Key
-    Properties:
-      Description: "Kinesis KMS Key for Amazon Connect Agent Events"
-      EnableKeyRotation: true
-      KeyPolicy:
-        Version: '2012-10-17'
-        Statement:
-        - Sid: Allow administration of the key
-          Effect: Allow
-          Principal:
-            AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
-          Action: kms:*
-          Resource: "*"
-        - Sid: Allow use of the key
-          Effect: Allow
-          Principal:
-            AWS: "*"
-          Action:
-          - kms:Encrypt
-          - kms:Decrypt
-          - kms:ReEncrypt*
-          - kms:GenerateDataKey*
-          - kms:DescribeKey
-          Resource: "*"
-
-## KMS Key Aliases for Kinesis Streams ##
-  rKeyAliasKinesisAmazonConnectContactTraceRecords:
-    Type: 'AWS::KMS::Alias'
-    Properties:
-      AliasName: !Sub 'alias/kinesisstream-${pEnvironment}-${pConnectInstanceName}-ContactTraceRecords'
-      TargetKeyId: !Ref rKMSKeyKinesisAmazonConnectContactTraceRecords
-  rKeyAliasKinesisAmazonConnectAgentEvents:
-    Type: 'AWS::KMS::Alias'
-    Properties:
-      AliasName: !Sub 'alias/kinesisstream-${pEnvironment}-${pConnectInstanceName}-agentevents'
-      TargetKeyId: !Ref rKMSKeyKinesisAmazonConnectAgentEvents
-
 ## Kinesis Streams ##
   rKinesisStreamAmazonConnectContactTraceRecords:
     Type: AWS::Kinesis::Stream
@@ -656,7 +386,7 @@ Resources:
       RetentionPeriodHours: 24
       StreamEncryption:
         EncryptionType: KMS
-        KeyId: !GetAtt 'rKMSKeyKinesisAmazonConnectContactTraceRecords.Arn'
+        KeyId: !GetAtt 'rKMSKeyAmazonConnectData.Arn'
       StreamModeDetails:
         StreamMode: ON_DEMAND
   rKinesisStreamAmazonConnectAgentEvents:
@@ -666,7 +396,7 @@ Resources:
       RetentionPeriodHours: 24
       StreamEncryption:
         EncryptionType: KMS
-        KeyId: !GetAtt 'rKMSKeyKinesisAmazonConnectAgentEvents.Arn'
+        KeyId: !GetAtt 'rKMSKeyAmazonConnectData.Arn'
       StreamModeDetails:
         StreamMode: ON_DEMAND
 
@@ -693,7 +423,7 @@ Resources:
               - kms:GenerateDataKey
               - kms:Decrypt
             Resource:
-             - !GetAtt rKMSKeyKinesisAmazonConnectContactTraceRecords.Arn
+             - !GetAtt rKMSKeyAmazonConnectData.Arn
           - Effect: Allow
             Action:
               - kinesis:DescribeStream
@@ -724,7 +454,7 @@ Resources:
               - kms:GenerateDataKey
               - kms:Decrypt
             Resource:
-             - !GetAtt rKMSKeyKinesisAmazonConnectAgentEvents.Arn
+             - !GetAtt rKMSKeyAmazonConnectData.Arn
           - Effect: Allow
             Action:
               - kinesis:DescribeStream
@@ -781,7 +511,7 @@ Resources:
         BucketARN: !GetAtt rS3BucketAmazonConnectContactTraceRecords.Arn
         EncryptionConfiguration: 
           KMSEncryptionConfig:
-            AWSKMSKeyARN: !GetAtt rKMSKeyKinesisFirehoseAmazonConnectContactTraceRecords.Arn
+            AWSKMSKeyARN: !GetAtt rKMSKeyAmazonConnectData.Arn
         Prefix: CONTACT_TRACE_RECORDS/
         RoleARN: !GetAtt rIAMRoleKinesisFirehoseAmazonConnectContactTraceRecords.Arn
   rKinesisFirehoseDeliveryStreamAmazonConnectAgentEvents:
@@ -796,7 +526,7 @@ Resources:
         BucketARN: !GetAtt rS3BucketAmazonConnectAgentEvents.Arn
         EncryptionConfiguration: 
           KMSEncryptionConfig:
-            AWSKMSKeyARN: !GetAtt rKMSKeyKinesisFirehoseAmazonConnectAgentEvents.Arn
+            AWSKMSKeyARN: !GetAtt rKMSKeyAmazonConnectData.Arn
         Prefix: AGENT_EVENTS/
         RoleARN: !GetAtt rIAMRoleKinesisFirehoseAmazonConnectAgentEvents.Arn
 
@@ -828,7 +558,7 @@ Resources:
         BucketPrefix: CALL_RECORDINGS
         EncryptionConfig: 
             EncryptionType: KMS
-            KeyId: !GetAtt 'rKMSKeyAmazonConnectCallRecordings.Arn'
+            KeyId: !GetAtt 'rKMSKeyAmazonConnectData.Arn'
       StorageType: S3
   rConnectInstanceStorageConfigChatTranscripts:
     Type: AWS::Connect::InstanceStorageConfig
@@ -840,7 +570,7 @@ Resources:
         BucketPrefix: CHAT_TRANSCRIPTS
         EncryptionConfig: 
             EncryptionType: KMS
-            KeyId: !GetAtt 'rKMSKeyAmazonConnectChatTranscripts.Arn'
+            KeyId: !GetAtt 'rKMSKeyAmazonConnectData.Arn'
       StorageType: S3
   rConnectInstanceStorageConfigScheduledReports:
     Type: AWS::Connect::InstanceStorageConfig
@@ -852,7 +582,7 @@ Resources:
         BucketPrefix: SCHEDULED_REPORTS
         EncryptionConfig: 
             EncryptionType: KMS
-            KeyId: !GetAtt 'rKMSKeyAmazonConnectScheduledReports.Arn'
+            KeyId: !GetAtt 'rKMSKeyAmazonConnectData.Arn'
       StorageType: S3
   rConnectInstanceStorageConfigContactTraceRecords:
     Type: AWS::Connect::InstanceStorageConfig
